@@ -17,7 +17,7 @@ def projectName = 'ci-plugin-demo'
 /*
 	The clone URL of the git repo. Add the SSH variant which starts with "git@github.com"
 */
-def gitRepoUrl = 'git@github.com:Thrifleganger/ci-plugin-demo.git'
+def gitRepoUrl = 'git@github.com:Federic23/workshop.git' 
 
 def version = ''
 
