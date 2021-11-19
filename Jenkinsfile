@@ -44,10 +44,45 @@ pipeline {
 				])
 			}
 		}
-        stage('Build') {   
-        	steps {     
-        		echo "Build"   		
-        	}          
+       stage('Build') { 
+            steps {
+				script {				
+					if (!isUnix()) {
+						echo "Building plugin for Windows"
+						bat """
+							curl -L "https://api.juce.com/api/v1/download/juce/latest/windows" -o juce.zip
+							jar xf juce.zip
+							"JUCE/projucer.exe" --set-global-search-path windows defaultJuceModulePath JUCE/modules
+							"JUCE/projucer.exe" --resave "${projectName}.jucer"													
+							cd Builds/VisualStudio2019							
+							if not defined MSBUILD_EXE set MSBUILD_EXE=C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/MSBuild/Current/Bin/MSBuild.exe
+							"%MSBUILD_EXE%" ${projectName}.sln /p:VisualStudioVersion=16.0 /m /p:Configuration=Release /p:Platform=x64 /p:PreferredToolArchitecture=x64			
+							copy "x64\\Release\\VST3\\${projectName}.vst3" "..\\..\\Installer\\Windows\\${projectName}.vst3"							
+						"""
+						def versionScript = """
+							@(
+								"JUCE/projucer.exe" --get-version ${projectName}.jucer
+							)
+						"""
+						version = bat(script: versionScript, returnStdout: true).trim()
+					} else {
+						echo "Building plugin for Mac"
+						sh """
+							curl -L https://api.juce.com/api/v1/download/juce/latest/osx -o juce.zip
+							unzip juce
+							./JUCE/Projucer.app/Contents/MacOS/Projucer --resave ${projectName}.jucer							
+							cd Builds/MacOSX
+							xcodebuild -configuration Release -scheme "${projectName} - All" build
+							cp -R `readlink build/Release/${projectName}.vst3` ../../Installer/Mac/${projectName}.vst3
+							cp -R `readlink build/Release/${projectName}.component` ../../Installer/Mac/${projectName}.component
+						"""
+						version = sh(
+							script: "./JUCE/Projucer.app/Contents/MacOS/Projucer --get-version ${projectName}.jucer", 
+							returnStdout: true
+						).trim()						
+					}
+				}
+            }
         }
         stage('Test') {             
         	steps {    
